@@ -39,9 +39,9 @@ module.exports = function(application) {
 
     // INSERT USER
     application.post("/users", (req, res) => {
-        var data = req.body;
+        var fieldsToUpdate = req.body;
 
-        if (data.name == '') {
+        if (fieldsToUpdate.name == '') {
             msg = {
                 error: '001',
                 msg  : 'The field "name" cannot be empty.'
@@ -50,10 +50,37 @@ module.exports = function(application) {
             return false;
         }
 
-        if (data.lastName == '') {
+        if (fieldsToUpdate.lastName == '') {
             msg = {
                 error: '001',
                 msg  : 'The field "lastName" cannot be empty.'
+            };
+            res.send(msg);
+            return false;
+        }
+
+        if (fieldsToUpdate.email == '') {
+            msg = {
+                error: '002',
+                msg  : 'The field "email" cannot be empty.'
+            };
+            res.send(msg);
+            return false;
+        }
+
+        if (fieldsToUpdate.doc == '') {
+            msg = {
+                error: '001',
+                msg  : 'The field "doc" cannot be empty.'
+            };
+            res.send(msg);
+            return false;
+        }
+
+        if (fieldsToUpdate.phoneNumber == '') {
+            msg = {
+                error: '001',
+                msg  : 'The field "phoneNumber" cannot be empty.'
             };
             res.send(msg);
             return false;
@@ -64,40 +91,39 @@ module.exports = function(application) {
         var usersRef = ref.child(`/users/${id}/`);
 
         usersRef = usersRef.set({
-            name     : data.name,
-            lastName : data.lastName,
+            name        : fieldsToUpdate.name,
+            lastName    : fieldsToUpdate.lastName,
+            email       : fieldsToUpdate.email,
+            doc         : fieldsToUpdate.doc,
+            phoneNumber : fieldsToUpdate.phoneNumber,
         },
         (error) => {
             if (error) {
                 res.send(`Data could not be inserted. Error: ${error}`);
             } else {
-                res.send(`${data.name} ${data.lastName} registered.`);
+                res.send(`User registered.`);
             }
         });
     });
 
     // UPDATE USER
     application.patch("/users", (req, res) => {
-        var data = req.body;
-
-        var userId = req.query.userId;        
+        var fieldsToUpdate = req.body;
+        var userId = req.query.userId;
 
         if (userId == '' || userId == 'undefined') {
             res.send("The field userID cannot be null");
             return false;
         }
-        // TODO: Utilizar apenas os campos enviados pro update
-        var usersRef = ref.child(`/users/${userId}/`);
+        
+        var usersRef = ref.child(`/users/${userId}/`);  
 
-        usersRef = usersRef.update({
-            name     : data.name,
-            lastName : data.lastName,
-        },
+        usersRef = usersRef.update(fieldsToUpdate,
         (error) => {
             if (error) {
                 res.send(`Data could not be inserted. Error: ${error}`);
             } else {
-                res.send(`${data.name} ${data.lastName} updated.`);
+                res.send(`User updated.`);
             }
         });
     });
