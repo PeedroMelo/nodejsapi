@@ -1,13 +1,13 @@
-// TODO: Trocar validações de campos pra Express Validator
-
 module.exports = function(application) {
     var firebaseAdmin = application.config.firebase.database;
     var db  = firebaseAdmin.database();
     var ref = db.ref("server");
     
+    let usersPath = '/users';
+    
     // GET USERS
-    application.get("/users", (req, res) => {
-        var usersRef = ref; //.child("users")
+    application.get(usersPath, (req, res) => {
+        var usersRef = ref.child(usersPath);
 
         usersRef.on("value", 
             (snapshot) => {
@@ -21,10 +21,27 @@ module.exports = function(application) {
     });
 
     // GET USER
+    application.get(`${usersPath}/*`, (req, res) => {
+        var url = req.params[0].split("/");
+        var userId = url[0];
+
+        var usersRef = ref.child(`${usersPath}/${userId}/`);
+        
+        usersRef.on("value", 
+            (snapshot) => {
+                res.json(snapshot.val());
+                usersRef.off("value");
+            },
+            (errorObject) => {         
+                res.send(`The read failed: ${errorObject.code}`);
+            });
+    });
+
+    // GET USER
     application.get("/user", (req, res) => {
         var userId = req.query.userId;
 
-        var usersRef = ref.child(`/users/${userId}/`);
+        var usersRef = ref.child(`${usersPath}/${userId}/`);
 
         usersRef.on("value", 
             (snapshot) => {
@@ -38,59 +55,27 @@ module.exports = function(application) {
     });
 
     // INSERT USER
-    application.post("/users", (req, res) => {
+    application.post(usersPath, (req, res) => {
         var fieldsToUpdate = req.body;
 
-        if (fieldsToUpdate.name == '') {
-            msg = {
-                error: '001',
-                msg  : 'The field "name" cannot be empty.'
-            };
-            res.send(msg);
+        req.assert('name', {error: '001', msg: 'The field name cannot be empty.'}).notEmpty();
+        req.assert('lastName', {error: '001', msg: 'The field lastName cannot be empty.'}).notEmpty();
+        req.assert('email',{error: '001', msg: 'The field email cannot be empty.'}).notEmpty();
+        req.assert('doc',{error: '001', msg: 'The field doc cannot be empty.'}).notEmpty();
+        req.assert('phoneNumber', {error: '001', msg: 'The field phoneNumber cannot be empty.'}).notEmpty();
+
+        var errors = req.validationErrors();
+
+        if (errors) {
+            res.send(errors[0].msg);
             return false;
         }
 
-        if (fieldsToUpdate.lastName == '') {
-            msg = {
-                error: '001',
-                msg  : 'The field "lastName" cannot be empty.'
-            };
-            res.send(msg);
-            return false;
-        }
-
-        if (fieldsToUpdate.email == '') {
-            msg = {
-                error: '002',
-                msg  : 'The field "email" cannot be empty.'
-            };
-            res.send(msg);
-            return false;
-        }
-
-        if (fieldsToUpdate.doc == '') {
-            msg = {
-                error: '001',
-                msg  : 'The field "doc" cannot be empty.'
-            };
-            res.send(msg);
-            return false;
-        }
-
-        if (fieldsToUpdate.phoneNumber == '') {
-            msg = {
-                error: '001',
-                msg  : 'The field "phoneNumber" cannot be empty.'
-            };
-            res.send(msg);
-            return false;
-        }
-
-        const id = parseInt(Math.random() * 1000000000, 10);
+        var id = parseInt(Math.random() * 1000000000, 10);
         
-        var usersRef = ref.child(`/users/${id}/`);
+        var usersRef = ref.child(`${usersPath}/${id}/`);
 
-        usersRef = usersRef.set({
+        usersRef.set({
             name        : fieldsToUpdate.name,
             lastName    : fieldsToUpdate.lastName,
             email       : fieldsToUpdate.email,
@@ -107,37 +92,47 @@ module.exports = function(application) {
     });
 
     // UPDATE USER
-    application.patch("/users", (req, res) => {
+    application.patch(`${usersPath}/*`, (req, res) => {        
+        
         var fieldsToUpdate = req.body;
-        var userId = req.query.userId;
+        var userId = req.params[0].split("/")[0];
 
-        if (userId == '' || userId == 'undefined') {
+        if (!userId || userId == '' || userId == 'undefined') {
             res.send("The field userID cannot be null");
             return false;
         }
         
-        var usersRef = ref.child(`/users/${userId}/`);  
+        var usersRef = ref.child(`${usersPath}/${userId}/`);
 
-        usersRef = usersRef.update(fieldsToUpdate,
+        usersRef.update(fieldsToUpdate,
         (error) => {
             if (error) {
-                res.send(`Data could not be inserted. Error: ${error}`);
-            } else {
-                res.send(`User updated.`);
+                res.send(`Data could not be updated. Error: ${error}`);
+                return false;
             }
         });
+
+        usersRef.on("value", 
+            (snapshot) => {
+                res.json(snapshot.val());
+                usersRef.off("value");
+            },
+            (errorObject) => {         
+                res.send(`The read failed: ${errorObject.code}`);
+            });
     });
 
     // DELETE USER
-    application.delete('/users', (req, res) => {
-         var userId = req.query.userId; 
+    application.delete(`${usersPath}/*`, (req, res) => {
 
-        if (userId == '' || userId == 'undefined') {
-            res.send("userID cannot be null");
+        var userId = req.params[0].split("/")[0];
+
+        if (!userId || userId == '' || userId == 'undefined') {
+            res.send("The field userID cannot be null");
             return false;
         }
-
-        var usersRef = ref.child(`/users/${userId}/`);
+        
+        var usersRef = ref.child(`${usersPath}/${userId}/`);
         usersRef.remove()
             .then(() => {
                 res.send(`User removed`);
